@@ -20,7 +20,7 @@ class UserProfileIcon extends GetView<LoginController> {
     }
 
     return IconButton(
-      icon: const Icon(Icons.account_circle),
+      icon: const Icon(Icons.account_circle , color: Colors.white,),
       onPressed: () {
         Get.dialog(
           AlertDialog(

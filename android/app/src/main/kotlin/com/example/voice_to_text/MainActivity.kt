@@ -9,6 +9,8 @@ import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "native_speech"
@@ -100,10 +102,17 @@ class MainActivity : FlutterActivity() {
                         // Log.d("NativeSpeech", "Partial Result: $partialText") // Can be very noisy
                         // Only send if it's different from the last sent partial text
                         // This avoids flooding Flutter if partial results are very similar
+                        // if (partialText != currentPartialText) { // Keep this logic if you still want to update currentPartialText for some internal reason
+                        //     currentPartialText = partialText
+                        //     // methodChannel.invokeMethod("onResult", partialText) // COMMENTED OUT TO PREVENT SENDING PARTIALS
+                        // }
+                        
+                        // To prevent sending partial results, we simply won't call methodChannel.invokeMethod here.
+                        // We can still update currentPartialText if it's used elsewhere for internal logic (e.g. very basic live transcription display in native logs if needed)
                         if (partialText != currentPartialText) {
-                             currentPartialText = partialText
-                             methodChannel.invokeMethod("onResult", partialText)
+                             currentPartialText = partialText // Update for internal tracking if needed
                         }
+                        Log.d("NativeSpeech", "Partial Result (not sent to Flutter): $partialText") 
                     }
                 }
 

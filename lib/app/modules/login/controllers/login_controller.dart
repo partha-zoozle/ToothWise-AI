@@ -8,6 +8,7 @@ final supabase = Supabase.instance.client;
 class LoginController extends GetxController {
   final RxBool isLoading = false.obs;
   static const String webClientId = '695830795380-cdd0prekslfjph5ptdbs404d9b4tlj4j.apps.googleusercontent.com';
+  static const String iosClientID = '695830795380-m8ol2pu712254c52e66a2hmmmgn522at.apps.googleusercontent.com';
 
 
   @override
@@ -37,16 +38,17 @@ class LoginController extends GetxController {
     try {
       if (kDebugMode) {
         print("Initiating Supabase Google Sign-In...");
-        print("Web Client ID: $webClientId");
       }
 
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId: webClientId, // Essential for idToken verification by Supabase
+        serverClientId: webClientId,
+        clientId: iosClientID,
+        scopes: ['email', 'profile'],
       );
 
+      // Sign in with Google
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        // User cancelled the sign-in
         if (kDebugMode) {
           print("Google Sign-In cancelled by user.");
         }
@@ -54,32 +56,22 @@ class LoginController extends GetxController {
         return;
       }
 
+      // Get the Google auth tokens
       final googleAuth = await googleUser.authentication;
-      final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
         throw 'Google Sign-In failed: No ID Token found.';
       }
-      if (accessToken == null) {
-        // While the article includes accessToken in signInWithIdToken,
-        // Supabase typically primarily needs the idToken for Google Auth.
-        // The accessToken might be required by Supabase for other providers or specific setups.
-        // For safety, we check, but usually, the idToken is the key.
-        if (kDebugMode) {
-          print('Warning: No Access Token found from Google, but proceeding with ID Token.');
-        }
-      }
-      
+
       if (kDebugMode) {
         print("Google ID Token: $idToken");
-        // print("Google Access Token: $accessToken"); // Uncomment if needed for debugging
       }
 
-      final AuthResponse response = await supabase.auth.signInWithIdToken(
+      // Sign in with Supabase using the ID token
+      final response = await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
-        accessToken: accessToken, // Supabase might use this for some providers or future enhancements
       );
 
       if (response.user == null) {
@@ -89,7 +81,6 @@ class LoginController extends GetxController {
       if (kDebugMode) {
         print("Supabase Sign-In successful: ${response.user?.email}");
       }
-      // Navigation is handled by the auth state listener (_setupAuthListener)
 
     } catch (e) {
       if (kDebugMode) {
@@ -112,8 +103,6 @@ class LoginController extends GetxController {
       if (kDebugMode) {
         print("User signed out successfully.");
       }
-      // Navigation is handled by the auth state listener
-      // Ensure user is redirected to login screen if not handled by listener properly.
       Get.offAllNamed(AppRoutes.LOGIN);
     } catch (e) {
       if (kDebugMode) {

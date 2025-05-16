@@ -9,7 +9,7 @@
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<string>com.example.voiceToText</string>
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
@@ -47,6 +47,12 @@
 		<true/>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>This app needs access to the microphone for speech recognition.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>This app needs access to speech recognition to convert your voice to text.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>This app needs access to camera for scanning documents.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app needs access to photo library for uploading images.</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -54,7 +60,8 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.YOUR_IOS_REVERSED_CLIENT_ID</string>
+					<string>com.googleusercontent.apps.695830795380-m8ol2pu712254c52e66a2hmmmgn522at</string>
+					<string>io.supabase.voicetotext</string>
 				</array>
 			</dict>
 		</array>

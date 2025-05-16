@@ -177,6 +177,7 @@ class VoiceController extends GetxController {
     }
 
     final url = 'ws://192.168.0.57:8001/ws/$userId?authorization=$accessToken';
+    //final url = 'ws://dockrec.zoozle.dev/ws/$userId?authorization=$accessToken';
     if (kDebugMode) {
       print("Connecting to WebSocket: $url");
     }

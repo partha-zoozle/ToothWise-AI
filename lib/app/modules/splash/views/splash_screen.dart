@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 // import 'package:google_fonts/google_fonts.dart'; // No longer needed for main text
 import '../controllers/splash_controller.dart';
 
@@ -45,7 +44,8 @@ class SplashScreen extends GetView<SplashController> {
             child: _buildAbstractShape(screenHeight, Colors.pinkAccent.withOpacity(0.4), 600.ms, sizeFactor: 0.7, rotate: true)
           ),
 
-          // Center App Name
+          // Center App Logo
+                    // Center App Name
           Center(
             child: Text(
               'TOOTHWISE AI', // Updated App Name
@@ -57,9 +57,9 @@ class SplashScreen extends GetView<SplashController> {
                 letterSpacing: 2.0,
               ),
             )
-                .animate()
-                .fadeIn(delay: 700.ms, duration: 800.ms)
-                .scaleXY(begin: 0.8, end: 1.0, duration: 800.ms, curve: Curves.easeOutBack),
+            .animate()
+            .fadeIn(delay: 700.ms, duration: 800.ms)
+            .scaleXY(begin: 0.8, end: 1.0, duration: 800.ms, curve: Curves.easeOutBack),
           ),
 
         ],

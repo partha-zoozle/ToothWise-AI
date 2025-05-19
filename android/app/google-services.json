@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "564329343728",
+    "project_id": "toothwise-ai",
+    "storage_bucket": "toothwise-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:564329343728:android:7163d900ffcee671b33035",
+        "android_client_info": {
+          "package_name": "com.example.voice_to_text"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlaRtcAukqR_eznvMNh3H6iHrG2T5KzjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

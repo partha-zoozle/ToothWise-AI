@@ -11,6 +11,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
+import android.media.AudioManager
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "native_speech"
@@ -18,9 +21,12 @@ class MainActivity : FlutterActivity() {
     private lateinit var methodChannel: MethodChannel
     private var shouldBeListening = false
     private var currentPartialText = "" // To build up partial results if needed
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -37,6 +43,37 @@ class MainActivity : FlutterActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    private fun configureAudioSession() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val playbackAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(playbackAttributes)
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener { }
+                .build()
+
+            audioManager?.requestAudioFocus(audioFocusRequest!!)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.requestAudioFocus(null,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+        }
+    }
+
+    private fun releaseAudioSession() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus(null)
         }
     }
 
@@ -127,21 +164,21 @@ class MainActivity : FlutterActivity() {
             return
         }
         if (SpeechRecognizer.isRecognitionAvailable(this.applicationContext)) {
+            configureAudioSession() // Configure audio session before starting
             initializeSpeechRecognizer() // Ensure it's initialized
 
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L) // Optional: Long silence
-                // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L) // Optional: Long silence
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true) // Try to use offline recognition to avoid network delays
             }
             try {
                 speechRecognizer?.startListening(intent)
                 Log.d("NativeSpeech", "Called startListening on SpeechRecognizer")
             } catch (e: Exception) {
                 Log.e("NativeSpeech", "Error starting listening: ${e.message}")
-                 // If starting fails, try to re-initialize and start again after a delay
+                releaseAudioSession() // Release audio session on error
                 if(shouldBeListening) {
                     handler.postDelayed({
                         speechRecognizer = null // Force re-initialization
@@ -152,9 +189,8 @@ class MainActivity : FlutterActivity() {
             }
         } else {
             Log.e("NativeSpeech", "Speech Recognition not available on this device.")
-            // Optionally send an error back to Flutter
             methodChannel.invokeMethod("onError", "Speech Recognition not available")
-            shouldBeListening = false // Stop trying if not available
+            shouldBeListening = false
         }
     }
 
@@ -162,6 +198,7 @@ class MainActivity : FlutterActivity() {
         shouldBeListening = false
         speechRecognizer?.stopListening()
         speechRecognizer?.cancel()
+        releaseAudioSession() // Release audio session when stopping
         Log.d("NativeSpeech", "Called stopListening/cancel on SpeechRecognizer")
     }
     
@@ -171,6 +208,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        releaseAudioSession() // Clean up audio session
         speechRecognizer?.destroy()
         handler.removeCallbacksAndMessages(null) // Clean up handler
     }

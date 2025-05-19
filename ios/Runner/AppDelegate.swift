@@ -10,6 +10,8 @@ import AVFoundation
   private var recognitionTask: SFSpeechRecognitionTask?
   private var audioEngine: AVAudioEngine?
   private var channel: FlutterMethodChannel?
+  private var endSpeechTimer: Timer?
+  private let endSpeechTimeout: TimeInterval = 2.0
   
   override func application(
     _ application: UIApplication,
@@ -87,6 +89,7 @@ import AVFoundation
                          details: nil))
       return
     }
+    print("iOS Native - Audio Engine created: \(audioEngine != nil)")
     
     // Create and configure the recognition request
     recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -96,14 +99,17 @@ import AVFoundation
                          details: nil))
       return
     }
+    print("iOS Native - Recognition Request created: \(recognitionRequest != nil)")
     recognitionRequest.shouldReportPartialResults = true
     
     // Configure the audio session
     let audioSession = AVAudioSession.sharedInstance()
     do {
-      try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-      try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+      try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+      try audioSession.setActive(true)
+      print("iOS Native - Audio Session configured and active.")
     } catch {
+      print("iOS Native - ERROR setting up audio session: \(error.localizedDescription)")
       result(FlutterError(code: "AUDIO_SESSION_ERROR",
                          message: "Failed to set up audio session: \(error.localizedDescription)",
                          details: nil))
@@ -114,49 +120,79 @@ import AVFoundation
     recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] (result, error) in
       guard let self = self else { return }
       
+      print("iOS Native - Recognition Handler: Received callback.")
+      self.resetEndSpeechTimer()
+
       if let error = error {
+        print("iOS Native - Recognition Handler: Error: \(error.localizedDescription)")
         self.channel?.invokeMethod("onError", arguments: error.localizedDescription)
+        self.invalidateEndSpeechTimer()
         return
       }
       
       if let result = result {
         let transcript = result.bestTranscription.formattedString
-        self.channel?.invokeMethod("onResult", arguments: transcript)
+        let isFinal = result.isFinal
+        print("iOS Native - Recognition Handler: Transcript: '\(transcript)', isFinal: \(isFinal)")
         
-        if result.isFinal {
-          self.stopListening(result: nil)
+        self.channel?.invokeMethod("onResult", arguments: ["text": transcript, "isFinal": isFinal])
+        
+        if isFinal {
+          print("iOS Native - Recognition Handler: Result IS FINAL. Cleaning up audio engine.")
+          self.invalidateEndSpeechTimer()
+          self.audioEngine?.stop()
+          self.audioEngine?.inputNode.removeTap(onBus: 0)
+        } else {
+            self.startEndSpeechTimer()
         }
       }
     }
+    print("iOS Native - Recognition Task created: \(recognitionTask != nil)")
     
     // Configure the audio input
     let inputNode = audioEngine.inputNode
     let recordingFormat = inputNode.outputFormat(forBus: 0)
     
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, time in
+      print("iOS Native - Input Tap: Appending buffer at time \(time)")
       self?.recognitionRequest?.append(buffer)
     }
     
     // Start the audio engine
+    print("iOS Native - Preparing to start audio engine.")
     do {
       try audioEngine.start()
+      print("iOS Native - Audio engine STARTED successfully.")
       result(nil)
     } catch {
+      print("iOS Native - ERROR starting audio engine: \(error.localizedDescription)")
       result(FlutterError(code: "AUDIO_ENGINE_START_ERROR",
                          message: "Failed to start audio engine: \(error.localizedDescription)",
                          details: nil))
     }
   }
   
+  private func startEndSpeechTimer() {
+    invalidateEndSpeechTimer()
+    endSpeechTimer = Timer.scheduledTimer(withTimeInterval: endSpeechTimeout, repeats: false) { [weak self] _ in
+        print("iOS Native - EndSpeechTimer FIRED. Assuming end of speech.")
+        self?.recognitionRequest?.endAudio()
+    }
+  }
+  
+  private func resetEndSpeechTimer() {
+    endSpeechTimer?.invalidate()
+  }
+  
+  private func invalidateEndSpeechTimer() {
+    endSpeechTimer?.invalidate()
+    endSpeechTimer = nil
+  }
+  
   private func stopListening(result: FlutterResult?) {
-    audioEngine?.stop()
-    audioEngine?.inputNode.removeTap(onBus: 0)
+    print("iOS Native - stopListening called by Flutter.")
+    invalidateEndSpeechTimer()
     recognitionRequest?.endAudio()
-    recognitionTask?.cancel()
-    
-    audioEngine = nil
-    recognitionRequest = nil
-    recognitionTask = nil
     
     result?(nil)
   }

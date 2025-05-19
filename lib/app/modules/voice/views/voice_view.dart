@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:voice_to_text/app/modules/login/views/widgets/user_profile.dart';
 import '../controllers/voice_controller.dart';
+import 'package:figma_squircle/figma_squircle.dart';
 
 class VoiceScreen extends GetView<VoiceController> {
   const VoiceScreen({super.key});
@@ -12,11 +13,6 @@ class VoiceScreen extends GetView<VoiceController> {
   @override
   Widget build(BuildContext context) {
     final ScrollController scrollController = ScrollController();
-
-    // Scroll to bottom when messages change
-    // Make sure this listener is disposed to prevent memory leaks if VoiceScreen is disposed
-    // GetX usually handles controller listeners, but direct listeners on observables might need care.
-    // However, since this is in build method, it gets re-evaluated.
     ever(controller.chatMessages, (_) {
       // Using ever for better lifecycle management with GetX
       if (scrollController.hasClients && controller.chatMessages.isNotEmpty) {
@@ -26,7 +22,7 @@ class VoiceScreen extends GetView<VoiceController> {
           if (scrollController.hasClients &&
               controller.chatMessages.isNotEmpty) {
             scrollController.animateTo(
-              scrollController.position.maxScrollExtent,
+              scrollController.position.minScrollExtent,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
@@ -35,15 +31,31 @@ class VoiceScreen extends GetView<VoiceController> {
       }
     });
 
+    // Futuristic AI Design Palette
+    const Color bgColor = Color(0xFF0A0A23); // Dark space blue
+    const Color chatButtonColor = Color(0xFF00F0FF); // Neon cyan for primary FAB
+    const Color fabIconColor = Colors.white; // For icons on FABs
+    const Color stopButtonColor = Color(0xFFFF00FF); // Neon magenta for stop button
+    const Color userBubbleColor = Color(0xFF1C2A4F); // Updated User Bubble Color - Muted Dark Blue
+    // const Color botBubbleColor = Color(0xFF2A2A50); // Old bot color
+    const Color textColor = Colors.white;
+
+    // Define Bot Bubble Gradient
+    const LinearGradient botBubbleGradient = LinearGradient(
+      colors: [Color(0xFF0D1B4E), Color(0xFF254A80)], // Dark Sapphire to Celestial Blue
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bgColor,
         elevation: 0,
         title: Text(
           'ToothWise AI Assistant',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
             color: Colors.white.withOpacity(0.9),
           ),
@@ -51,121 +63,95 @@ class VoiceScreen extends GetView<VoiceController> {
         centerTitle: true,
         actions: [const UserProfileIcon()],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0D1B2A), Color(0xFF1B263B), Color(0xFF415A77)],
-          ),
-        ),
+      body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: Obx(() {
-                if (controller.chatMessages.isEmpty) {
-                  // When chat is empty, scrollController is not attached to the ListView
-                  return Center(
-                    child: Text(
-                      'Tap the button and start speaking...',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
+                var displayMessages = List<Map<String, dynamic>>.from(controller.chatMessages);
+                if (controller.isWaitingForBot.value && displayMessages.isNotEmpty && displayMessages.last['sender'] == 'user') {
+                  displayMessages.add({'sender': 'bot_typing', 'timestamp': DateTime.now()});
                 }
-                // ListView is built only when chatMessages is not empty
+
                 return ListView.builder(
-                  controller: scrollController, // controller is attached here
-                  padding: const EdgeInsets.only(
-                    top: 100,
-                    bottom: 180,
-                    left: 10,
-                    right: 10,
-                  ),
-                  itemCount: controller.chatMessages.length,
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 140.0),
+                  reverse: true,
+                  itemCount: displayMessages.length,
                   itemBuilder: (context, index) {
-                    final message = controller.chatMessages[index];
+                    final message = displayMessages[displayMessages.length - 1 - index];
                     final bool isUserMessage = message['sender'] == 'user';
-                    final bool isSystemMessage = message['sender'] == 'system';
-                    final String formattedTime = DateFormat(
-                      'hh:mm a',
-                    ).format(message['timestamp']);
+                    final bool isBotTyping = message['sender'] == 'bot_typing';
+
+                    if (isBotTyping) {
+                      return _buildBotTypingIndicator(botBubbleGradient, chatButtonColor, textColor);
+                    }
+
+                    // Chat bubble styling with specific corner rounding for "talk bubble" look
+                    // Using SmoothRectangleBorder for squircle corners
+                    final ShapeBorder bubbleShape = SmoothRectangleBorder(
+                      borderRadius: SmoothBorderRadius(
+                        cornerRadius: 20,
+                        cornerSmoothing:1, // Adjust for desired smoothness
+                      ),
+                      side: isUserMessage 
+                            ? BorderSide.none 
+                            : BorderSide(color: chatButtonColor.withOpacity(0.7), width: 1.5), // Border for bot messages
+                    );
+                    
+                    // The old BorderRadius logic might be partially replicable if figma_squircle supports different radii per corner,
+                    // or by nesting/clipping. For now, a uniform squircle will be applied.
+                    // BorderRadius messageBorderRadius = isUserMessage
+                    //     ? const BorderRadius.only(
+                    //         topLeft: Radius.circular(20.0),
+                    //         topRight: Radius.circular(20.0),
+                    //         bottomLeft: Radius.circular(20.0),
+                    //         bottomRight: Radius.circular(5.0), // Less rounded on one corner
+                    //       )
+                    //     : const BorderRadius.only(
+                    //         topLeft: Radius.circular(20.0),
+                    //         topRight: Radius.circular(20.0),
+                    //         bottomLeft: Radius.circular(5.0), // Less rounded on one corner
+                    //         bottomRight: Radius.circular(20.0),
+                    //       );
 
                     return Align(
-                      alignment:
-                          isUserMessage
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
+                      alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.symmetric(
-                          vertical: 5,
-                          horizontal: 8,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 15,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              isUserMessage
-                                  ? Colors.blueAccent.withOpacity(0.8)
-                                  : isSystemMessage
-                                  ? Colors.grey.withOpacity(0.5)
-                                  : Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(16),
-                            topRight: const Radius.circular(16),
-                            bottomLeft:
-                                isUserMessage
-                                    ? const Radius.circular(16)
-                                    : const Radius.circular(4),
-                            bottomRight:
-                                isUserMessage
-                                    ? const Radius.circular(4)
-                                    : const Radius.circular(16),
-                          ),
-                          boxShadow: [
+                        margin: const EdgeInsets.symmetric(vertical: 6.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                        decoration: ShapeDecoration( 
+                          gradient: isUserMessage ? null : botBubbleGradient, // Apply gradient for bot
+                          color: isUserMessage ? userBubbleColor : null, // Use flat color for user, null for bot if gradient is used
+                          shape: bubbleShape, 
+                          shadows: [ 
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 3,
-                              offset: const Offset(1, 1),
-                            ),
+                              color: chatButtonColor.withOpacity(0.1),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 2),
+                            )
                           ],
                         ),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                         child: Column(
-                          crossAxisAlignment:
-                              isUserMessage
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                           children: [
                             Text(
-                              message['text'],
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color:
-                                    isSystemMessage
-                                        ? Colors.white70
-                                        : Colors.white,
-                                fontWeight:
-                                    isSystemMessage
-                                        ? FontWeight.w300
-                                        : FontWeight.normal,
-                                fontStyle:
-                                    isSystemMessage
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
+                              message['text'].toString(),
+                              style: GoogleFonts.inter(
+                                color: textColor,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 16,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              formattedTime,
-                              style: GoogleFonts.poppins(
+                              DateFormat('hh:mm a').format(message['timestamp'] as DateTime),
+                              style: GoogleFonts.inter(
+                                color: textColor.withOpacity(0.6),
+                                fontWeight: FontWeight.w300,
                                 fontSize: 10,
-                                color: Colors.white.withOpacity(0.6),
                               ),
                             ),
                           ],
@@ -176,146 +162,128 @@ class VoiceScreen extends GetView<VoiceController> {
                 );
               }),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              height: 50,
-              child: Obx(() {
-                if (controller.isWaitingForBot.value) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Assistant is replying...",
-                        style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeOut(delay: 500.ms, duration: 300.ms).fadeIn(duration: 300.ms);
-                } else if (!controller.isListening.value && controller.recognizedText.value.isNotEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Text(
-                      "You said: ${controller.recognizedText.value}",
-                      style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.8), fontSize: 13, fontStyle: FontStyle.italic),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                } else {
-                  return const SizedBox(height: 20);
-                }
-              }),
-            ),
           ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 20.0, right: 0),
-        child: Obx(
-          () => Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (controller.isListening.value)
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: Obx(() {
+          // Renamed variable for clarity
+          bool isCurrentlyListening = controller.isListening.value;
+          bool botBusy = controller.isWaitingForBot.value || controller.isBotAudioPlaying.value;
+          bool canStartListening = !isCurrentlyListening && !botBusy;
+
+          // Define the main microphone button widget once
+          Widget mainMicButton = FloatingActionButton(
+            heroTag: 'mainFab',
+            onPressed: canStartListening ? controller.startListening : null,
+            backgroundColor: canStartListening ? chatButtonColor : Colors.grey.shade700,
+            elevation: canStartListening ? 6.0 : 2.0,
+            shape: const CircleBorder(),
+            child: Icon(
+                isCurrentlyListening ? Icons.mic_off : Icons.mic,
+                color: fabIconColor,
+                size: 28,
+            ),
+          ).animate(
+            target: canStartListening ? 1 : 0,
+            effects: canStartListening ? 
+              [
+                ScaleEffect(delay: 200.ms, duration: 600.ms, curve: Curves.elasticOut, begin: const Offset(0.8, 0.8), end: const Offset(1,1)),
+                ShimmerEffect(delay: 800.ms, duration: 1500.ms, color: chatButtonColor.withOpacity(0.5), blendMode: BlendMode.srcATop)
+              ]
+              : [],
+          );
+
+          if (isCurrentlyListening) {
+            // Listening state: Show main mic (disabled) and stop button side-by-side
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                mainMicButton, // Will appear disabled due to onPressed: null from canStartListening logic
+                const SizedBox(width: 16),
                 FloatingActionButton(
-                      heroTag: 'stopFab',
-                      onPressed: controller.stopListening,
-                      backgroundColor: Colors.redAccent.withOpacity(0.9),
-                      elevation: 2,
-                      mini: true,
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 24,
+                  heroTag: 'stopFab',
+                  onPressed: controller.stopListening,
+                  backgroundColor: stopButtonColor,
+                  elevation: 4,
+                  mini: false, // Make it normal size for balance in the Row
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.close, color: fabIconColor, size: 24),
+                )
+                .animate()
+                .fadeIn(duration: 200.ms)
+                .slideX(begin: 0.5, end: 0, curve: Curves.easeInOutCubic),
+              ],
+            );
+          } else {
+            // Not listening state: Show main mic button and "Tap to speak" text below it
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                mainMicButton,
+                if (!botBusy) // Only show "Tap to speak" if not busy and not listening
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, right: 4.0),
+                    child: Text(
+                      "Tap to speak",
+                      style: GoogleFonts.inter(
+                        color: chatButtonColor.withOpacity(0.8),
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
                       ),
-                    )
-                    .animate()
-                    .fadeIn(duration: 200.ms)
-                    .slideX(begin: 0.2, curve: Curves.easeInOutCubic),
-              if (controller.isListening.value) const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'mainFab',
-                onPressed: (controller.isWaitingForBot.value || controller.isBotAudioPlaying.value)
-                    ? null  // Disable button while waiting for bot or bot is speaking
-                    : controller.isListening.value
-                        ? null
-                        : controller.startListening,
-                backgroundColor: (controller.isWaitingForBot.value || controller.isBotAudioPlaying.value)
-                    ? Colors.grey.withOpacity(0.6)  // Grey out when disabled
-                    : controller.isListening.value
-                        ? Colors.grey.withOpacity(0.6)
-                        : const Color(0xFF00B8D4).withOpacity(0.95),
-                elevation: controller.isListening.value ? 2.0 : 6.0,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(
-                      controller.isListening.value ? Icons.mic_off : Icons.mic,
-                      color: Colors.white,
-                      size: controller.isListening.value ? 24 : 28,
                     ),
-                    if (controller.isWaitingForBot.value || controller.isBotAudioPlaying.value)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ).animate(
-                target: controller.isListening.value ? 0 : 1,
-                effects:
-                    controller.isListening.value
-                        ? []
-                        : [
-                          ScaleEffect(
-                            delay: 400.ms,
-                            duration: 400.ms,
-                            begin: Offset(0.9, 0.9),
-                            end: Offset(1, 1),
-                            curve: Curves.elasticOut,
-                          ),
-                          ShimmerEffect(
-                            delay: 800.ms,
-                            duration: 1200.ms,
-                            color: Colors.white.withOpacity(0.2),
-                          ),
-                        ],
-              ),
-              if (!controller.isListening.value && !controller.isWaitingForBot.value)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10.0, right: 4.0),
-                  child: Text(
-                    "Tip: In noisy places, move closer to your phone's mic or use a headset for best results.",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-            ],
+                  ).animate().fadeIn(delay: 600.ms),
+              ],
+            );
+          }
+        }),
+      ),
+    );
+  }
+
+  Widget _buildBotTypingIndicator(Gradient botGradient, Color accentColor, Color textColor) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6.0),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+        decoration: ShapeDecoration( 
+          gradient: botGradient,
+          shape: SmoothRectangleBorder( 
+            borderRadius: SmoothBorderRadius(
+              cornerRadius: 20,
+              cornerSmoothing:1,
+            ),
+            side: BorderSide(color: accentColor.withOpacity(0.7), width: 1.5), // Use accentColor
           ),
+        ),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(Get.context!).size.width * 0.35),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 10,
+              height: 10,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor.withOpacity(0.7)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Typing...',
+              style: GoogleFonts.inter(
+                color: textColor.withOpacity(0.7),
+                fontWeight: FontWeight.w400,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

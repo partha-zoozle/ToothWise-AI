@@ -271,6 +271,7 @@ class VoiceController extends GetxController {
     }
 
     final url = 'ws://dockrec.zoozle.dev/ws/$userId?authorization=$accessToken';
+    //final url = 'ws:///ws/$userId?authorization=$accessToken';
     if (kDebugMode) {
       print("Connecting to WebSocket: $url");
     }
@@ -351,10 +352,14 @@ class VoiceController extends GetxController {
 
             if (serverMessage.containsKey('turn_complete') && serverMessage['turn_complete'] == true) {
               if (kDebugMode) print("Turn complete received. Buffered text: '${_currentBotMessageBuffer.trim()}', Buffered audio chunks: ${_audioQueue.length}");
-              if (_currentBotMessageBuffer.trim().isNotEmpty) {
+              
+              // Process the buffered text to replace newlines and trim
+              String processedText = _currentBotMessageBuffer.replaceAll('\n', ' ').trim();
+
+              if (processedText.isNotEmpty) {
                 chatMessages.add({
                   'sender': 'bot',
-                  'text': _currentBotMessageBuffer.trim(),
+                  'text': processedText,
                   'timestamp': DateTime.now()
                 });
               }
@@ -399,14 +404,18 @@ class VoiceController extends GetxController {
           if (kDebugMode) {
             print('WebSocket: Connection closed.');
           }
-          if (_currentBotMessageBuffer.trim().isNotEmpty) {
+          
+          // Process the buffered text to replace newlines and trim
+          String processedText = _currentBotMessageBuffer.replaceAll('\n', ' ').trim();
+
+          if (processedText.isNotEmpty) {
             chatMessages.add({
               'sender': 'bot',
-              'text': '[Fragmented Text] ${_currentBotMessageBuffer.trim()}',
+              'text': '[Fragmented Text] $processedText',
               'timestamp': DateTime.now()
             });
-            _currentBotMessageBuffer = "";
           }
+          _currentBotMessageBuffer = "";
           _audioQueue.clear();
           _isPlayingQueue = false;
           _channel = null; 

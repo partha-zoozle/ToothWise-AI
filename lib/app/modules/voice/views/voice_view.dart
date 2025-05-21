@@ -7,9 +7,6 @@ import 'package:lottie/lottie.dart';
 import 'package:voice_to_text/app/modules/login/views/widgets/user_profile.dart';
 import '../controllers/voice_controller.dart';
 import 'package:figma_squircle/figma_squircle.dart';
-import '../widgets/service_list.dart';
-import '../widgets/slot_list.dart';
-import '../widgets/appointment_status.dart';
 
 class VoiceScreen extends GetView<VoiceController> {
   const VoiceScreen({super.key});
@@ -68,172 +65,366 @@ class VoiceScreen extends GetView<VoiceController> {
         actions: [const UserProfileIcon()],
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Service List Section
-            SizedBox(
-              height: 200,
-              child: ServiceList(controller: controller),
-            ),
-            
-            // Appointment Status Section
+            // Full-screen appointment status animation overlay
             Obx(() {
-              if (controller.currentAppointment.value != null) {
-                return AppointmentStatus(
-                  controller: controller,
-                );
-              }
-              return const SizedBox.shrink();
-            }),
-            
-            // Available Slots Section
-            SlotList(controller: controller),
-            
-            // Animation Section with Loading State
-            Obx(() {
-              if (controller.isAnimating.value) {
+              if (controller.showFullScreenStatusAnimation.value) {
                 return Container(
-                  height: 200,
-                  width: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E7D5F), Color(0xFF0A0A23)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Main Animation
-                      AnimatedOpacity(
-                        opacity: controller.isLoading.value ? 0.0 : 1.0,
-                        duration: const Duration(milliseconds: 300),
-                        child: Lottie.asset(
-                          controller.currentAnimation.value,
-                          height: 200,
-                          width: 200,
-                          fit: BoxFit.contain,
-                        ),
+                  child: Center(
+                    child: Lottie.asset(
+                      controller.currentAnimation.value,
+                      width: 300,
+                      height: 300,
+                      fit: BoxFit.contain,
+                      repeat: false,
+                      errorBuilder: (context, error, stackTrace) => Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, color: Colors.red, size: 60),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Animation failed to load',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                      // Loading Animation
-                      AnimatedOpacity(
-                        opacity: controller.isLoading.value ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 300),
-                        child: Lottie.asset(
-                          'assets/animations/loading.json',
-                          height: 100,
-                          width: 100,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               }
               return const SizedBox.shrink();
             }),
-            
-            // Chat Messages Section
-            Expanded(
-              child: Obx(() {
-                var displayMessages = List<Map<String, dynamic>>.from(controller.chatMessages);
-                if (controller.isWaitingForBot.value && displayMessages.isNotEmpty && displayMessages.last['sender'] == 'user') {
-                  displayMessages.add({'sender': 'bot_typing', 'timestamp': DateTime.now()});
-                }
+            // Main chat UI
+            Column(
+              children: [
+                /*Obx(() {
+                  if (controller.currentAppointment.value != null) {
+                    return AppointmentStatus(
+                      controller: controller,
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
 
-                return ListView.builder(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 140.0),
-                  reverse: true,
-                  itemCount: displayMessages.length,
-                  itemBuilder: (context, index) {
-                    final message = displayMessages[displayMessages.length - 1 - index];
-                    final bool isUserMessage = message['sender'] == 'user';
-                    final bool isBotTyping = message['sender'] == 'bot_typing';
+                // Available Slots Section
+                SlotList(controller: controller),
 
-                    if (isBotTyping) {
-                      return _buildBotTypingIndicator(botBubbleGradient, chatButtonColor, textColor);
+                // Animation Section with Loading State*/
+                Obx(() {
+                  if (controller.isAnimating.value) {
+                    return Container(
+                      height: 200,
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Main Animation
+                          AnimatedOpacity(
+                            opacity: controller.isLoading.value ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Lottie.asset(
+                              controller.currentAnimation.value,
+                              height: 200,
+                              width: 200,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          // Loading Animation
+                          AnimatedOpacity(
+                            opacity: controller.isLoading.value ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Lottie.asset(
+                              'assets/animations/loading.json',
+                              height: 100,
+                              width: 100,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+
+                // Chat Messages Section
+                Expanded(
+                  child: Obx(() {
+                    var displayMessages = List<Map<String, dynamic>>.from(controller.chatMessages);
+                    if (controller.isWaitingForBot.value && displayMessages.isNotEmpty && displayMessages.last['sender'] == 'user') {
+                      displayMessages.add({'sender': 'bot_typing', 'timestamp': DateTime.now()});
                     }
 
-                    // Chat bubble styling with specific corner rounding for "talk bubble" look
-                    // Using SmoothRectangleBorder for squircle corners
-                    final ShapeBorder bubbleShape = SmoothRectangleBorder(
-                      borderRadius: SmoothBorderRadius(
-                        cornerRadius: 20,
-                        cornerSmoothing:1, // Adjust for desired smoothness
-                      ),
-                      side: isUserMessage 
-                            ? BorderSide.none 
-                            : BorderSide(color: chatButtonColor.withOpacity(0.7), width: 1.5), // Border for bot messages
-                    );
-                    
-                    // The old BorderRadius logic might be partially replicable if figma_squircle supports different radii per corner,
-                    // or by nesting/clipping. For now, a uniform squircle will be applied.
-                    // BorderRadius messageBorderRadius = isUserMessage
-                    //     ? const BorderRadius.only(
-                    //         topLeft: Radius.circular(20.0),
-                    //         topRight: Radius.circular(20.0),
-                    //         bottomLeft: Radius.circular(20.0),
-                    //         bottomRight: Radius.circular(5.0), // Less rounded on one corner
-                    //       )
-                    //     : const BorderRadius.only(
-                    //         topLeft: Radius.circular(20.0),
-                    //         topRight: Radius.circular(20.0),
-                    //         bottomLeft: Radius.circular(5.0), // Less rounded on one corner
-                    //         bottomRight: Radius.circular(20.0),
-                    //       );
+                    return ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 140.0),
+                      reverse: true,
+                      itemCount: displayMessages.length,
+                      itemBuilder: (context, index) {
+                        final message = displayMessages[displayMessages.length - 1 - index];
+                        final bool isUserMessage = message['sender'] == 'user';
+                        final bool isBotTyping = message['sender'] == 'bot_typing';
 
-                    return Align(
-                      alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6.0),
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                        decoration: ShapeDecoration( 
-                          gradient: isUserMessage ? null : botBubbleGradient, // Apply gradient for bot
-                          color: isUserMessage ? userBubbleColor : null, // Use flat color for user, null for bot if gradient is used
-                          shape: bubbleShape, 
-                          shadows: [ 
-                            BoxShadow(
-                              color: chatButtonColor.withOpacity(0.1),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                        ),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                        child: Column(
+                        if (isBotTyping) {
+                          return _buildBotTypingIndicator(botBubbleGradient, chatButtonColor, textColor);
+                        }
+                        final ShapeBorder bubbleShape = SmoothRectangleBorder(
+                          borderRadius: SmoothBorderRadius(
+                            cornerRadius: 20,
+                            cornerSmoothing:1, // Adjust for desired smoothness
+                          ),
+                          side: isUserMessage
+                                ? BorderSide.none
+                                : BorderSide(color: chatButtonColor.withOpacity(0.7), width: 1.5), // Border for bot messages
+                        );
+                        return Column(
                           crossAxisAlignment: isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              message['text'].toString(),
-                              style: GoogleFonts.inter(
-                                color: textColor,
-                                fontWeight: FontWeight.w400,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat('hh:mm a').format(message['timestamp'] as DateTime),
-                              style: GoogleFonts.inter(
-                                color: textColor.withOpacity(0.6),
-                                fontWeight: FontWeight.w300,
-                                fontSize: 10,
+                            // Bot/user message bubble
+                            Align(
+                              alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 6.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                                decoration: ShapeDecoration(
+                                  gradient: isUserMessage ? null : botBubbleGradient,
+                                  color: isUserMessage ? userBubbleColor : null,
+                                  shape: bubbleShape,
+                                  shadows: [
+                                    BoxShadow(
+                                      color: chatButtonColor.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                      offset: const Offset(0, 2),
+                                    )
+                                  ],
+                                ),
+                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                                child: Column(
+                                  crossAxisAlignment: isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message['text'].toString(),
+                                      style: GoogleFonts.inter(
+                                        color: textColor,
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Only show the horizontal service cards for THIS message if showServices is true
+                                    if (!isUserMessage && message['showServices'] == true)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0, left: 4.0, right: 4.0),
+                                        child: SizedBox(
+                                          height: 170,
+                                          child: ListView.separated(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: controller.services.length,
+                                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                            itemBuilder: (context, idx) {
+                                              final service = controller.services[idx];
+                                              return Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius: SmoothBorderRadius(
+                                                    cornerRadius: 22,
+                                                    cornerSmoothing: 1,
+                                                  ),
+                                                  onTap: () {
+                                                    //controller._sendMessage('I want to book ${service.name}');
+                                                    controller.showServiceListInChat.value = false;
+                                                  },
+                                                  child: Container(
+                                                    width: 170,
+                                                    padding: const EdgeInsets.all(12),
+                                                    decoration: ShapeDecoration(
+                                                      color: Colors.white,
+                                                      shape: SmoothRectangleBorder(
+                                                        borderRadius: SmoothBorderRadius(
+                                                          cornerRadius: 22,
+                                                          cornerSmoothing: 1,
+                                                        ),
+                                                      ),
+                                                      shadows: [
+                                                        BoxShadow(
+                                                          color: Colors.blue.withOpacity(0.08),
+                                                          blurRadius: 12,
+                                                          offset: const Offset(0, 4),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Lottie.asset(
+                                                          _getAnimationForService(service.name),
+                                                          height: 60,
+                                                          width: 60,
+                                                          fit: BoxFit.contain,
+                                                          repeat: true,
+                                                        ),
+                                                        const SizedBox(height: 8),
+                                                        Text(
+                                                          service.name,
+                                                          style: GoogleFonts.poppins(
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 15,
+                                                            color: Colors.blueGrey[900],
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          '₹${service.price.toStringAsFixed(0)}',
+                                                          style: GoogleFonts.poppins(
+                                                            color: Color(0xff1E7D5F),
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 2),
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+                                                            Icon(Icons.timer_outlined, size: 14, color: Colors.blueGrey),
+                                                            const SizedBox(width: 3),
+                                                            Text(
+                                                              '${service.duration} mins',
+                                                              style: GoogleFonts.poppins(
+                                                                color: Colors.grey[600],
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    SizedBox(height: 8,),
+                                    if (!isUserMessage && message['showSlots'] == true && message['slots'] != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0, left: 4.0, right: 4.0),
+                                        child: SizedBox(
+                                          height: 60,
+                                          child: ListView.separated(
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount: (message['slots'] as List).length,
+                                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                            itemBuilder: (context, idx) {
+                                              final slot = message['slots'][idx];
+                                              final start = DateTime.parse(slot[0]);
+                                              final end = DateTime.parse(slot[1]);
+                                              // Try to get the preferred service name from the previous message if available
+                                              String serviceName = '';
+                                              if (controller.chatMessages.isNotEmpty) {
+                                                // Look for the most recent message with user_preffered_service
+                                                for (var i = controller.chatMessages.length - 1; i >= 0; i--) {
+                                                  final msg = controller.chatMessages[i];
+                                                  if (msg.containsKey('user_preffered_service') && msg['user_preffered_service'] != null) {
+                                                    serviceName = msg['user_preffered_service']['name'] ?? '';
+                                                    break;
+                                                  }
+                                                }
+                                              }
+                                              if (serviceName.isEmpty && controller.services.isNotEmpty) {
+                                                serviceName = controller.services.first.name;
+                                              }
+                                              return Material(
+                                                color: Colors.white,
+                                                elevation: 2,
+                                                borderRadius: BorderRadius.circular(16),
+                                                child: InkWell(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  onTap: () {
+                                                    controller.sendBookingMessage(
+                                                      serviceName: serviceName,
+                                                      startTime: start,
+                                                      endTime: end,
+                                                    );
+                                                  },
+                                                  child: Container(
+                                                    width: 130,
+                                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Text(
+                                                          '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')} - '
+                                                          '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}',
+                                                          style: GoogleFonts.poppins(
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 14,
+                                                            color: Colors.blueGrey[900],
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          '${DateFormat('dd MMM').format(start)}',
+                                                          style: GoogleFonts.poppins(
+                                                            color: Colors.grey[600],
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    Text(
+                                      DateFormat('hh:mm a').format(message['timestamp'] as DateTime),
+                                      style: GoogleFonts.inter(
+                                        color: textColor.withOpacity(0.6),
+                                        fontWeight: FontWeight.w300,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                      ),
+                        );
+                      },
                     );
-                  },
-                );
-              }),
+                  }),
+                ),
+              ],
             ),
           ],
         ),
@@ -360,5 +551,22 @@ class VoiceScreen extends GetView<VoiceController> {
         ),
       ),
     );
+  }
+
+  String _getAnimationForService(String name) {
+    switch (name) {
+      case 'Teeth Cleaning':
+        return 'assets/animations/teeth_cleaning.json';
+      case 'Tooth Extraction':
+        return 'assets/animations/tooth_extraction.json';
+      case 'Dental Filling':
+        return 'assets/animations/tooth_filling.json';
+      case 'Root Canal':
+        return 'assets/animations/root_canal.json';
+      case 'Teeth Whitening':
+        return 'assets/animations/teeth_whitening.json';
+      default:
+        return 'assets/animations/teeth_cleaning.json';
+    }
   }
 }

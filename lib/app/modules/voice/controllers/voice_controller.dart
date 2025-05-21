@@ -26,6 +26,7 @@ class VoiceController extends GetxController {
   WebSocketChannel? _channel;
   final RxList<Map<String, dynamic>> chatMessages = <Map<String, dynamic>>[].obs;
   String _lastSentUserText = "";
+  final RxList<Service> _services = <Service>[].obs;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   String _currentBotMessageBuffer = "";
@@ -46,8 +47,8 @@ class VoiceController extends GetxController {
   final Map<String, String> serviceAnimations = {
     'Teeth Cleaning': 'assets/animations/teeth_cleaning.json',
     'Tooth Filling': 'assets/animations/tooth_filling.json',
-    'Root Canal': 'assets/animations/root_canal.json',
-    'Tooth Extraction': 'assets/animations/tooth_extraction.json',
+    'Root Canal': 'assets/animations/teeth_whitening.json',
+    'Tooth Extraction': 'assets/animations/teeth_whitening.json',
     'Teeth Whitening': 'assets/animations/teeth_whitening.json',
   };
 
@@ -62,6 +63,9 @@ class VoiceController extends GetxController {
   final Map<String, String> loadingAnimations = {
     'default': 'assets/animations/loading.json',
   };
+
+  final RxBool showServiceListInChat = false.obs;
+  final RxBool showFullScreenStatusAnimation = false.obs;
 
   @override
   void onInit() {
@@ -449,6 +453,48 @@ class VoiceController extends GetxController {
                   playAppointmentStatusAnimation(status);
                 }
             }
+
+            if (serverMessage.containsKey('user_asked_to_list_services') && 
+                serverMessage['user_asked_to_list_services'] == true) {
+              print("hi inside this");
+              showServiceListInChat.value = true;
+
+              // If backend sends services, update; otherwise, use local or previously loaded services
+              if (serverMessage.containsKey('services') && serverMessage['services'] is List) {
+                _services.value = (serverMessage['services'] as List)
+                    .map((service) => Service(
+                          id: service['id'],
+                          name: service['name'],
+                          description: service['description'],
+                          price: service['price'].toDouble(),
+                          duration: service['duration'],
+                        ))
+                    .toList();
+                services.value = _services; // keep in sync
+              } else if (_services.isNotEmpty) {
+                services.value = _services;
+              } // else, you may want to load from API or show a fallback
+
+              // Always add the chat message with showServices: true
+              chatMessages.add({
+                'sender': 'bot',
+                'text': 'Here are our available services:',
+                'timestamp': DateTime.now(),
+                'showServices': true,
+              });
+            }
+
+            if (serverMessage.containsKey('slots_available') && 
+                serverMessage['slots_available'] is List &&
+                (serverMessage['slots_available'] as List).isNotEmpty) {
+              chatMessages.add({
+                'sender': 'bot',
+                'text': 'Here are the available time slots:',
+                'timestamp': DateTime.now(),
+                'showSlots': true,
+                'slots': serverMessage['slots_available'],
+              });
+            }
           } catch (e) {
             if (kDebugMode) print('WebSocket: Error decoding/processing: $e. Message: $message');
             isWaitingForBot.value = false;
@@ -594,12 +640,20 @@ class VoiceController extends GetxController {
   void playAppointmentStatusAnimation(String status) {
     final animationPath = appointmentAnimations[status];
     if (animationPath != null) {
-      _playAnimationWithTransition(animationPath);
+      showFullScreenStatusAnimation.value = true;
+      currentAnimation.value = animationPath;
+      isAnimating.value = true;
+      isLoading.value = false;
+
+      // Hide after 4 seconds
+      Future.delayed(const Duration(seconds: 4), () {
+        showFullScreenStatusAnimation.value = false;
+        isAnimating.value = false;
+      });
     }
   }
 
   void _playAnimationWithTransition(String animationPath) {
-    // First show loading animation
     currentAnimation.value = loadingAnimations['default']!;
     isAnimating.value = true;
     isLoading.value = true;
@@ -650,6 +704,13 @@ class VoiceController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void sendBookingMessage({required String serviceName, required DateTime startTime, required DateTime endTime}) {
+    final formattedTime = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} - '
+        '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+    final message = 'I want to book $serviceName at $formattedTime';
+    _sendMessage(message);
   }
 } 
 

@@ -39,6 +39,13 @@ flutter:
   assets:
     - assets/images/
     - assets/animations/
+    - assets/animations/appointment_cancelled.json
+    - assets/animations/appointment_confirmed.json
+    - assets/animations/appointment_rescheduled.json
+    - assets/animations/loading.json
+    - assets/animations/teeth_cleaning.json
+    - assets/animations/tooth_filling.json
+    - assets/animations/teeth_whitening.json
   # assets:
   #   - assets/your_logo.png
 

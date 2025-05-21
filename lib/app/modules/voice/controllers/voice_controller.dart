@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:voice_to_text/app/data/models/appointment_model.dart';
+import 'package:voice_to_text/app/data/models/service_model.dart';
+import 'package:voice_to_text/app/data/providers/api_provider.dart';
 import 'package:voice_to_text/app/widgets/native_speech.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,12 +33,38 @@ class VoiceController extends GetxController {
   bool _isPlayingQueue = false; // Flag to track if we're currently playing the queue
   String? _currentTempFilePathForIOS; // New property
 
+  final ApiProvider _apiProvider = ApiProvider();
+  final RxList<Service> services = <Service>[].obs;
+  final Rx<AppointmentResponse?> currentAppointment = Rx<AppointmentResponse?>(null);
+  final Rx<AvailableSlotsResponse?> availableSlots = Rx<AvailableSlotsResponse?>(null);
+  
+  // Animation controllers
+  final RxString currentAnimation = ''.obs;
+  final RxBool isAnimating = false.obs;
+
+  // Animation paths for different services
+  final Map<String, String> serviceAnimations = {
+    'Teeth Cleaning': 'assets/animations/teeth_cleaning.json',
+    'Tooth Filling': 'assets/animations/tooth_filling.json',
+    'Root Canal': 'assets/animations/root_canal.json',
+    'Tooth Extraction': 'assets/animations/tooth_extraction.json',
+    'Teeth Whitening': 'assets/animations/teeth_whitening.json',
+  };
+
+  // Animation paths for appointment status
+  final Map<String, String> appointmentAnimations = {
+    'confirmed': 'assets/animations/appointment_confirmed.json',
+    'cancelled': 'assets/animations/appointment_cancelled.json',
+    'rescheduled': 'assets/animations/appointment_rescheduled.json',
+  };
+
   @override
   void onInit() {
     super.onInit();
     _configureAudioPlayer();
     _requestMicrophonePermission();
     _initWebSocket();
+    _loadServices();
     NativeSpeech.setResultHandler((dynamic arg1, [dynamic arg2]) {
       String text;
       bool isFinal;
@@ -510,6 +539,68 @@ class VoiceController extends GetxController {
     _channel?.sink.close(); 
     _audioPlayer.dispose();
     super.onClose();
+  }
+
+  Future<void> _loadServices() async {
+    try {
+      final response = await _apiProvider.getServices();
+      services.value = response.services;
+      if (kDebugMode) print('Services loaded: ${services.length}');
+    } catch (e) {
+      if (kDebugMode) print('Error loading services: $e');
+    }
+  }
+
+  void playServiceAnimation(String serviceName) {
+    final animationPath = serviceAnimations[serviceName];
+    if (animationPath != null) {
+      currentAnimation.value = animationPath;
+      isAnimating.value = true;
+      Future.delayed(const Duration(seconds: 3), () {
+        isAnimating.value = false;
+      });
+    }
+  }
+
+  void playAppointmentStatusAnimation(String status) {
+    final animationPath = appointmentAnimations[status];
+    if (animationPath != null) {
+      currentAnimation.value = animationPath;
+      isAnimating.value = true;
+      Future.delayed(const Duration(seconds: 3), () {
+        isAnimating.value = false;
+      });
+    }
+  }
+
+  Future<void> checkAppointmentStatus() async {
+    try {
+      final response = await _apiProvider.getAppointmentStatus();
+      currentAppointment.value = response;
+      playAppointmentStatusAnimation(response.appointmentStatus);
+    } catch (e) {
+      if (kDebugMode) print('Error checking appointment status: $e');
+    }
+  }
+
+  Future<void> getAvailableSlots({
+    required String date,
+    required String time,
+    required int serviceId,
+  }) async {
+    try {
+      final response = await _apiProvider.getAvailableSlots(
+        date: date,
+        time: time,
+        serviceId: serviceId,
+      );
+      availableSlots.value = response;
+      // Play animation for the selected service
+      final service = services.firstWhere((s) => s.id == serviceId);
+      playServiceAnimation(service.name);
+    } catch (e) {
+      if (kDebugMode) print('Error getting available slots: $e');
+    }
   }
 } 
 

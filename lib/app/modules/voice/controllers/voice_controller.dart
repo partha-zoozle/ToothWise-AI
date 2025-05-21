@@ -58,6 +58,11 @@ class VoiceController extends GetxController {
     'rescheduled': 'assets/animations/appointment_rescheduled.json',
   };
 
+  // Animation paths for loading states
+  final Map<String, String> loadingAnimations = {
+    'default': 'assets/animations/loading.json',
+  };
+
   @override
   void onInit() {
     super.onInit();
@@ -415,6 +420,34 @@ class VoiceController extends GetxController {
                 if (kDebugMode) {
                     print("WebSocket: Received message in unknown/other format: $serverMessage");
                 }
+                
+                // Handle appointment status updates
+                if (serverMessage.containsKey('appointment_status')) {
+                  final status = serverMessage['appointment_status'] as String;
+                  final details = serverMessage['appointment_details'] as Map<String, dynamic>;
+                  
+                  // Update current appointment
+                  currentAppointment.value = AppointmentResponse(
+                    appointmentStatus: status,
+                    appointmentDetails: AppointmentDetails(
+                      appointmentId: details['appointment_id'],
+                      slotStart: DateTime.parse(details['slot_start']),
+                      slotEnd: DateTime.parse(details['slot_end']),
+                      notes: details['notes'],
+                      price: details['price'].toDouble(),
+                      service: Service(
+                        id: details['service']['service_id'],
+                        name: details['service']['name'],
+                        duration: details['service']['duration'],
+                        price: details['service']['price'].toDouble(),
+                        description: details['service']['description'],
+                      ),
+                    ),
+                  );
+                  
+                  // Play the appropriate animation
+                  playAppointmentStatusAnimation(status);
+                }
             }
           } catch (e) {
             if (kDebugMode) print('WebSocket: Error decoding/processing: $e. Message: $message');
@@ -554,32 +587,45 @@ class VoiceController extends GetxController {
   void playServiceAnimation(String serviceName) {
     final animationPath = serviceAnimations[serviceName];
     if (animationPath != null) {
-      currentAnimation.value = animationPath;
-      isAnimating.value = true;
-      Future.delayed(const Duration(seconds: 3), () {
-        isAnimating.value = false;
-      });
+      _playAnimationWithTransition(animationPath);
     }
   }
 
   void playAppointmentStatusAnimation(String status) {
     final animationPath = appointmentAnimations[status];
     if (animationPath != null) {
+      _playAnimationWithTransition(animationPath);
+    }
+  }
+
+  void _playAnimationWithTransition(String animationPath) {
+    // First show loading animation
+    currentAnimation.value = loadingAnimations['default']!;
+    isAnimating.value = true;
+    isLoading.value = true;
+
+    // After a short delay, show the actual animation
+    Future.delayed(const Duration(milliseconds: 500), () {
       currentAnimation.value = animationPath;
-      isAnimating.value = true;
+      isLoading.value = false;
+
+      // Hide animation after it completes
       Future.delayed(const Duration(seconds: 3), () {
         isAnimating.value = false;
       });
-    }
+    });
   }
 
   Future<void> checkAppointmentStatus() async {
     try {
+      isLoading.value = true;
       final response = await _apiProvider.getAppointmentStatus();
       currentAppointment.value = response;
       playAppointmentStatusAnimation(response.appointmentStatus);
     } catch (e) {
       if (kDebugMode) print('Error checking appointment status: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -589,6 +635,7 @@ class VoiceController extends GetxController {
     required int serviceId,
   }) async {
     try {
+      isLoading.value = true;
       final response = await _apiProvider.getAvailableSlots(
         date: date,
         time: time,
@@ -600,6 +647,8 @@ class VoiceController extends GetxController {
       playServiceAnimation(service.name);
     } catch (e) {
       if (kDebugMode) print('Error getting available slots: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 } 

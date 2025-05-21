@@ -3,9 +3,13 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
 import 'package:voice_to_text/app/modules/login/views/widgets/user_profile.dart';
 import '../controllers/voice_controller.dart';
 import 'package:figma_squircle/figma_squircle.dart';
+import '../widgets/service_list.dart';
+import '../widgets/slot_list.dart';
+import '../widgets/appointment_status.dart';
 
 class VoiceScreen extends GetView<VoiceController> {
   const VoiceScreen({super.key});
@@ -66,6 +70,75 @@ class VoiceScreen extends GetView<VoiceController> {
       body: SafeArea(
         child: Column(
           children: [
+            // Service List Section
+            SizedBox(
+              height: 200,
+              child: ServiceList(controller: controller),
+            ),
+            
+            // Appointment Status Section
+            Obx(() {
+              if (controller.currentAppointment.value != null) {
+                return AppointmentStatus(
+                  controller: controller,
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            
+            // Available Slots Section
+            SlotList(controller: controller),
+            
+            // Animation Section with Loading State
+            Obx(() {
+              if (controller.isAnimating.value) {
+                return Container(
+                  height: 200,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Main Animation
+                      AnimatedOpacity(
+                        opacity: controller.isLoading.value ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Lottie.asset(
+                          controller.currentAnimation.value,
+                          height: 200,
+                          width: 200,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      // Loading Animation
+                      AnimatedOpacity(
+                        opacity: controller.isLoading.value ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Lottie.asset(
+                          'assets/animations/loading.json',
+                          height: 100,
+                          width: 100,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            
+            // Chat Messages Section
             Expanded(
               child: Obx(() {
                 var displayMessages = List<Map<String, dynamic>>.from(controller.chatMessages);

@@ -1,0 +1,63 @@
+name: voice_to_text
+description: "AI powered dental appointment and voice assistance app."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0-250.0.dev
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_sign_in: ^6.3.0
+  speech_to_text: ^7.0.0
+  get: ^4.6.6
+  flutter_animate: ^4.5.0
+  google_fonts: ^6.1.0
+  permission_handler: ^11.3.0
+  http: ^1.2.1
+  supabase_flutter: ^2.9.0
+  flutter_native_splash: ^2.4.0
+  flutter_launcher_icons: ^0.14.3
+  web_socket_channel: ^2.4.0
+  intl: ^0.20.2
+  audioplayers: ^6.4.0
+  siri_wave: ^2.3.0
+  path_provider: ^2.0.0
+  figma_squircle: ^0.6.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+  # assets:
+  #   - assets/your_logo.png
+
+flutter_native_splash:
+  color: "#0A0A2E"
+  fullscreen: true
+  image: assets/images/toothwise_ai_logo.png
+  # Ensure no other confusing parameters are uncommented here for Android
+
+  # For Android 12+, you might want to provide a specific branding image
+  # and potentially a color for the icon background if your icon is adaptive.
+  # android_12:
+  #   image: assets/images/toothwise_ai_logo_android12.png # Optional: if you have a different version for A12+
+  #   icon_background_color: "#FFFFFF" # Example: White background for the icon on A12+
+  #   color: "#0A0A2E"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/toothwise_ai_logo.png"
+  remove_alpha_ios: true
+  # Optional: platform-specific settings
+  # adaptive_icon_background: "#FFFFFF" # For Android adaptive icons
+  # adaptive_icon_foreground: "assets/icons/app_icon_foreground.png" # For Android adaptive icons
